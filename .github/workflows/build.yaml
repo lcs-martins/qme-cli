@@ -6,6 +6,9 @@ on:
       - 'v*' # Dispara quando você cria uma tag como v1.0.0, v1.1.2, etc.
   workflow_dispatch: # Permite disparar manualmente pela aba Actions do GitHub se quiser testar
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build for ${{ matrix.os }}
