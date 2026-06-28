@@ -1,0 +1,87 @@
+name: Build and Release Multiplatform
+
+on:
+  push:
+    tags:
+      - 'v*' # Dispara quando você cria uma tag como v1.0.0, v1.1.2, etc.
+  workflow_dispatch: # Permite disparar manualmente pela aba Actions do GitHub se quiser testar
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset_name: qme-linux
+            executable_path: dist/qme
+          - os: windows-latest
+            asset_name: qme-windows.exe
+            executable_path: dist/qme.exe
+          - os: macos-latest
+            asset_name: qme-macos
+            executable_path: dist/qme
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Versão recomendada para estabilidade do PyInstaller/Textual
+          cache: 'pip' # Cache automático de dependências para build mais rápido
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller textual httpx dnspython requests
+          # Adicione qualquer outra dependência que seu app use (ex: requests, etc.)
+
+      - name: Build Binary with PyInstaller Spec
+        run: |
+          pyinstaller qme.spec
+
+      - name: Rename Binary for Release
+        shell: bash
+        run: |
+          # Move e renomeia o executável gerado na pasta dist para o nome da matriz
+          mv ${{ matrix.executable_path }} dist/${{ matrix.asset_name }}
+
+      - name: Upload Artifacts (Internal)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.asset_name }}
+          retention-days: 1
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Organize Assets
+        run: |
+          mkdir release_assets
+          # Retira os arquivos das subpastas criadas pelo download-artifact
+          find artifacts -type f -exec cp {} release_assets/ \;
+          ls -l release_assets/
+
+      - name: Generate Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: release_assets/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
