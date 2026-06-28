@@ -18,13 +18,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            asset_name: qme-linux
+            asset_name: qme
             executable_path: dist/qme
           - os: windows-latest
-            asset_name: qme-windows.exe
+            asset_name: qme.exe
             executable_path: dist/qme.exe
           - os: macos-latest
-            asset_name: qme-macos
+            asset_name: qme
             executable_path: dist/qme
 
     steps:
